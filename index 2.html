@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A2FA8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="מה סביבי">
+<title>מה סביבי</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --band1:#0A2FA8; --band2:#1565E0; --band3:#12C9D4;
+  --brand:#1557E0; --teal:#0FB5C0;
+  --bg:#F2F6FC; --surface:#FFFFFF; --line:#DCE4F2;
+  --text:#0E1B33; --muted:#5B6B87; --tint:#E8F0FE;
+  --food:#EE7414; --shul:#2B4FD8; --attr:#9245D6; --hike:#1C9A52;
+  --shadow:0 2px 10px rgba(10,47,168,.10);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#06102A; --surface:#0D1D42; --line:#1E3160;
+    --text:#E7EEFF; --muted:#93A4C8; --tint:#132A5C;
+    --shul:#6F8CFF; --attr:#B77CF0; --hike:#3CC47A; --food:#FF944A;
+    --shadow:0 2px 12px rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#06102A; --surface:#0D1D42; --line:#1E3160;
+  --text:#E7EEFF; --muted:#93A4C8; --tint:#132A5C;
+  --shul:#6F8CFF; --attr:#B77CF0; --hike:#3CC47A; --food:#FF944A;
+  --shadow:0 2px 12px rgba(0,0,0,.4);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:'Heebo',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+  background:var(--bg); color:var(--text);
+  -webkit-tap-highlight-color:transparent;
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+svg{display:block}
+
+/* ---- הפס הכחול: כותרת + זמני היום ---- */
+.band{
+  background:linear-gradient(135deg,var(--band1) 0%,var(--band2) 55%,var(--band3) 130%);
+  color:#fff;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 12px;
+}
+.top{display:flex;align-items:center;gap:10px}
+.logo{width:40px;height:40px;border-radius:11px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.brand{flex:1;min-width:0}
+.brand h1{margin:0;font-size:22px;font-weight:800;line-height:1.1;letter-spacing:-.2px}
+.place{font-size:13.5px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{
+  width:44px;height:44px;border-radius:50%;border:0;
+  background:rgba(255,255,255,.16);color:#fff;
+  display:grid;place-items:center;flex:none;
+}
+.iconbtn svg{width:22px;height:22px}
+.iconbtn[aria-pressed="true"]{background:#fff;color:var(--band1)}
+.hdate{margin-top:10px;font-size:13px;opacity:.92;display:flex;gap:10px;flex-wrap:wrap}
+.zlist{
+  display:flex;gap:8px;overflow-x:auto;margin:8px -14px 0;padding:2px 14px 4px;
+  scrollbar-width:none;
+}
+.zlist::-webkit-scrollbar{display:none}
+.z{
+  flex:none;border-radius:12px;padding:6px 11px;min-width:74px;text-align:center;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);
+}
+.z b{display:block;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.z span{font-size:12px;opacity:.9;white-space:nowrap}
+.z.past{opacity:.55}
+.z.next{background:#fff;color:var(--band1);border-color:#fff}
+.z.next span{opacity:1;font-weight:500}
+.z.skel{width:78px;height:48px;background:rgba(255,255,255,.12)}
+
+/* ---- קטגוריות ---- */
+.chips{
+  display:flex;gap:8px;overflow-x:auto;padding:12px 14px 10px;scrollbar-width:none;
+  background:var(--bg);position:sticky;top:0;z-index:500;
+}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  flex:none;display:flex;align-items:center;gap:6px;height:40px;padding:0 14px;
+  border-radius:20px;border:1.5px solid var(--line);background:var(--surface);
+  font-weight:500;font-size:15px;
+}
+.chip svg{width:18px;height:18px;color:var(--c)}
+.chip[aria-pressed="true"]{background:var(--c);border-color:var(--c);color:#fff}
+.chip[aria-pressed="true"] svg{color:#fff}
+.chip .n{font-size:12px;opacity:.75;font-variant-numeric:tabular-nums}
+
+/* ---- מפה ---- */
+.mapwrap{position:relative;margin:0 14px;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
+#map{height:40vh;min-height:230px;max-height:420px;background:var(--tint)}
+.leaflet-container{font-family:inherit;direction:ltr}
+.leaflet-popup-content{direction:rtl;text-align:right;font-size:14px;margin:10px 14px}
+.leaflet-control-attribution{font-size:10px}
+:root[data-theme="dark"] .leaflet-tile-pane{filter:invert(1) hue-rotate(185deg) brightness(.95) contrast(.9)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .leaflet-tile-pane{filter:invert(1) hue-rotate(185deg) brightness(.95) contrast(.9)}}
+.pin span{
+  width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+  background:var(--c);color:#fff;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.35);
+  transition:transform .15s;
+}
+.pin svg{width:16px;height:16px}
+.pin.sel span{transform:scale(1.35);box-shadow:0 0 0 4px rgba(255,255,255,.7),0 2px 8px rgba(0,0,0,.4)}
+.me span{display:block;width:18px;height:18px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 0 0 rgba(26,115,232,.5);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(26,115,232,.55)}70%{box-shadow:0 0 0 16px rgba(26,115,232,0)}100%{box-shadow:0 0 0 0 rgba(26,115,232,0)}}
+.fab{
+  position:absolute;bottom:12px;left:12px;z-index:450;width:46px;height:46px;border-radius:50%;
+  border:0;background:var(--surface);color:var(--brand);box-shadow:var(--shadow);display:grid;place-items:center;
+}
+.fab svg{width:22px;height:22px}
+.here{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:450;
+  border:0;border-radius:20px;height:38px;padding:0 16px;background:var(--brand);color:#fff;
+  font-weight:500;box-shadow:0 2px 10px rgba(0,0,0,.25);white-space:nowrap;
+}
+
+/* ---- טווח וסינון ---- */
+.tools{display:flex;align-items:center;gap:10px;padding:12px 14px 4px;flex-wrap:wrap}
+.seg{display:flex;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:3px;gap:2px}
+.seg button{border:0;background:none;height:34px;padding:0 10px;border-radius:9px;font-size:14px;color:var(--muted);font-weight:500;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--brand);color:#fff}
+.toggle{
+  display:flex;align-items:center;gap:6px;height:40px;padding:0 12px;border-radius:12px;
+  border:1.5px solid var(--line);background:var(--surface);font-size:14px;font-weight:500;
+}
+.toggle[aria-pressed="true"]{border-color:var(--food);color:var(--food);background:color-mix(in srgb,var(--food) 10%,var(--surface))}
+.toggle svg{width:16px;height:16px}
+
+.status{padding:6px 16px 2px;font-size:14px;color:var(--muted);min-height:26px}
+.note{
+  margin:6px 14px 0;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.45;
+  background:color-mix(in srgb,var(--food) 9%,var(--surface));color:var(--text);
+  border:1px solid color-mix(in srgb,var(--food) 25%,transparent);
+}
+.note.info{background:var(--tint);border-color:var(--line)}
+
+/* ---- רשימה ---- */
+.list{margin:10px 14px 24px;background:var(--surface);border-radius:18px;border:1px solid var(--line);overflow:hidden}
+.list:empty{display:none}
+.row{display:flex;gap:12px;padding:14px 14px 12px;border-bottom:1px solid var(--line);scroll-margin-top:70px}
+.row:last-child{border-bottom:0}
+.row.sel{background:var(--tint)}
+.badge{
+  flex:none;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--c) 14%,transparent);color:var(--c);
+}
+.badge svg{width:22px;height:22px}
+.body{flex:1;min-width:0}
+.body h3{margin:1px 0 2px;font-size:17px;font-weight:700;line-height:1.3}
+.meta{margin:0;font-size:14px;color:var(--muted);display:flex;gap:4px 12px;flex-wrap:wrap}
+.meta .d{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+.extra{margin:5px 0 0;font-size:13.5px;color:var(--muted);line-height:1.45;overflow-wrap:anywhere}
+.tag{display:inline-block;margin-top:6px;font-size:12.5px;font-weight:500;padding:2px 8px;border-radius:8px;background:color-mix(in srgb,var(--food) 14%,transparent);color:var(--food)}
+.actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.act{
+  height:38px;min-width:42px;padding:0 12px;border-radius:11px;border:1.5px solid var(--line);
+  background:var(--surface);display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  text-decoration:none;font-size:14px;font-weight:500;
+}
+.act svg{width:18px;height:18px}
+.act.go{background:var(--brand);border-color:var(--brand);color:#fff;padding:0 16px}
+.act.fav[aria-pressed="true"]{color:#E23D5B;border-color:#E23D5B}
+.act.fav[aria-pressed="true"] svg path{fill:currentColor}
+
+.skel-row{display:flex;gap:12px;padding:16px 14px;border-bottom:1px solid var(--line)}
+.skel-row i{display:block;border-radius:8px;background:var(--line);animation:sk 1.2s ease-in-out infinite alternate}
+@keyframes sk{from{opacity:.5}to{opacity:1}}
+.empty{padding:28px 20px;text-align:center;color:var(--muted);line-height:1.6}
+.empty strong{display:block;color:var(--text);font-size:17px;margin-bottom:4px}
+.btn{
+  height:48px;padding:0 22px;border-radius:14px;border:0;background:var(--brand);color:#fff;
+  font-weight:700;font-size:16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn.ghost{background:none;color:var(--brand);border:1.5px solid var(--line)}
+.empty .btn{margin-top:12px;height:42px;font-size:15px}
+
+/* ---- חלונות ---- */
+.overlay{position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column}
+.overlay[hidden]{display:none}
+.intro{
+  background:linear-gradient(160deg,var(--band1) 0%,var(--band2) 60%,var(--band3) 140%);color:#fff;
+  align-items:center;justify-content:center;text-align:center;
+  padding:calc(env(safe-area-inset-top,0px) + 24px) 28px calc(env(safe-area-inset-bottom,0px) + 28px);
+}
+.intro img{width:112px;height:112px;border-radius:28px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.intro h2{font-size:34px;font-weight:800;margin:22px 0 8px}
+.intro p{font-size:17px;line-height:1.55;margin:0 auto;max-width:330px;opacity:.95}
+.intro small{display:block;font-size:13.5px;opacity:.8;margin:18px auto 26px;max-width:320px;line-height:1.5}
+.intro .btn{background:#fff;color:var(--band1);width:100%;max-width:330px;height:54px;font-size:17px}
+.intro .btn.ghost{background:none;color:#fff;border-color:rgba(255,255,255,.45);margin-top:10px}
+
+.search{background:var(--bg)}
+.shead{
+  display:flex;gap:8px;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px;
+  background:var(--surface);border-bottom:1px solid var(--line);
+}
+.shead input{
+  flex:1;height:46px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);
+  padding:0 14px;font-size:17px;outline:none;
+}
+.shead input:focus{border-color:var(--brand)}
+.shead .iconbtn{background:var(--tint);color:var(--text)}
+.sbody{overflow-y:auto;flex:1;padding:12px}
+.res{
+  display:block;width:100%;text-align:right;border:0;background:var(--surface);border-radius:14px;
+  padding:12px 14px;margin-bottom:8px;border:1px solid var(--line);
+}
+.res b{display:block;font-size:16px}
+.res span{font-size:13px;color:var(--muted)}
+.res.mine{display:flex;align-items:center;gap:10px;color:var(--brand);font-weight:700}
+.res.mine svg{width:22px;height:22px}
+.shint{color:var(--muted);font-size:14px;padding:6px 4px;line-height:1.5}
+
+.toast{
+  position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);left:50%;transform:translate(-50%,30px);
+  background:#0E1B33;color:#fff;padding:11px 18px;border-radius:14px;font-size:14.5px;z-index:3000;
+  opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (min-width:760px){body{max-width:720px;margin:0 auto}}
+</style>
+</head>
+<body>
+
+<div class="band">
+  <div class="top">
+    <img class="logo" src="icon-192.png" alt="">
+    <div class="brand">
+      <h1>מה סביבי</h1>
+      <div class="place" id="placeLabel">מאתר מיקום…</div>
+    </div>
+    <button class="iconbtn" id="btnSearch" aria-label="חיפוש עיר"></button>
+    <button class="iconbtn" id="btnFavs" aria-label="המועדפים שלי" aria-pressed="false"></button>
+    <button class="iconbtn" id="btnTheme" aria-label="מצב כהה או בהיר"></button>
+  </div>
+  <div class="hdate" id="hdate"></div>
+  <div class="zlist" id="zlist" aria-label="זמני היום"></div>
+</div>
+
+<nav class="chips" id="cats" aria-label="קטגוריות"></nav>
+
+<div class="mapwrap">
+  <div id="map"></div>
+  <button class="here" id="btnHere" hidden>חפש באזור הזה</button>
+  <button class="fab" id="btnLocate" aria-label="חזרה למיקום שלי"></button>
+</div>
+
+<div class="tools">
+  <div class="seg" id="radius" role="group" aria-label="טווח חיפוש"></div>
+  <button class="toggle" id="btnKosher" aria-pressed="false"></button>
+</div>
+
+<div class="status" id="status" aria-live="polite"></div>
+<div id="notes"></div>
+<main class="list" id="list"></main>
+
+<!-- מסך פתיחה -->
+<div class="overlay intro" id="intro" hidden>
+  <img src="icon-512.png" alt="">
+  <h2>מה סביבי</h2>
+  <p>מסעדות, בתי כנסת, אטרקציות ומסלולי טיול קרובים אליך, במסך אחד.</p>
+  <small>כדי להראות מה יש סביבך צריך את המיקום שלך. הוא משמש רק לחיפוש ולא נשמר.</small>
+  <button class="btn" id="introGo">הצג מה סביבי</button>
+  <button class="btn ghost" id="introSearch">אחפש עיר בעצמי</button>
+</div>
+
+<!-- חיפוש עיר -->
+<div class="overlay search" id="search" hidden>
+  <div class="shead">
+    <input id="q" type="search" placeholder="שם עיר או מקום, למשל באר שבע" autocomplete="off" enterkeyhint="search">
+    <button class="iconbtn" id="closeSearch" aria-label="סגירה"></button>
+  </div>
+  <div class="sbody" id="sres"></div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+'use strict';
+/* ===================== אייקונים ===================== */
+const I = {
+  food:'<svg viewBox="0 0 24 24"><path fill="currentColor" d="M6 2v7c0 1.1.9 2 2 2v11h2V11c1.1 0 2-.9 2-2V2h-1.5v6h-1V2h-1v6h-1V2zM17 2c-1.8 0-3.2 2.6-3.2 5.8V13H16v9h2V2z"/></svg>',
+  shul:'<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" d="M12 2.8 20.2 17H3.8zM12 21.2 3.8 7h16.4z"/></svg>',
+  attr:'<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.5l2.8 6.3 6.9.6-5.2 4.6 1.5 6.8L12 17.3l-6 3.5 1.5-6.8-5.2-4.6 6.9-.6z"/></svg>',
+  hike:'<svg viewBox="0 0 24 24"><path fill="currentColor" d="M2 20 9 8.5l4 6.2 2.6-3.7L22 20z"/><circle fill="currentColor" cx="17.5" cy="5" r="2.2"/></svg>',
+  all:'<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>',
+  search:'<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13zM15.5 15.5 20 20"/></svg>',
+  heart:'<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.3 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/></svg>',
+  theme:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path fill="currentColor" d="M12 4a8 8 0 0 0 0 16z"/></svg>',
+  locate:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5" fill="currentColor"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg>',
+  close:'<svg viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></svg>',
+  nav:'<svg viewBox="0 0 24 24"><path fill="currentColor" d="M21 3 3 10.5l7.2 2.3L12.5 20z"/></svg>',
+  map:'<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M9 4 3 6.5v13L9 17l6 2.5 6-2.5v-13L15 6.5zM9 4v13M15 6.5v13"/></svg>',
+  phone:'<svg viewBox="0 0 24 24"><path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>',
+  web:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>',
+  check:'<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5 10 17 19 7"/></svg>'
+};
+
+/* ===================== הגדרות ===================== */
+const CATS = [
+  {id:'all',  name:'הכל',        color:'var(--brand)'},
+  {id:'food', name:'מסעדות',     color:'var(--food)'},
+  {id:'shul', name:'בתי כנסת',   color:'var(--shul)'},
+  {id:'attr', name:'אטרקציות',   color:'var(--attr)'},
+  {id:'hike', name:'טיולים',     color:'var(--hike)'}
+];
+const CAT = Object.fromEntries(CATS.map(c => [c.id, c]));
+const RADII = [500, 1000, 2000, 5000, 10000];
+const DEFAULT_CENTER = {lat:31.2518, lon:34.7913, label:'באר שבע'};
+const TZ = 'Asia/Jerusalem';
+
+const S = {
+  center:null, radius:+load('radius', 2000), cat:'all', kosher:false,
+  items:[], view:'near', sel:null, userMoved:false, loading:false, fromCache:false
+};
+let favs = load('favs', {});
+
+/* ===================== עזרים ===================== */
+const $ = s => document.querySelector(s);
+function load(k, d){ try{ const v = localStorage.getItem('ms_'+k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } }
+function save(k, v){ try{ localStorage.setItem('ms_'+k, JSON.stringify(v)); }catch(e){} }
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function dist(a, b){
+  const R = 6371000, r = x => x * Math.PI / 180;
+  const dLat = r(b.lat - a.lat), dLon = r(b.lon - a.lon);
+  const h = Math.sin(dLat/2)**2 + Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function fmtDist(m){
+  if (m < 1000) return Math.round(m / 10) * 10 + ' מ׳';
+  return (m / 1000).toFixed(m < 10000 ? 1 : 0) + ' ק״מ';
+}
+function fmtRadius(m){ return m < 1000 ? m + ' מ׳' : (m/1000) + ' ק״מ'; }
+function fmtTime(iso){ return new Date(iso).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit', timeZone:TZ}); }
+function todayISO(){ return new Date().toLocaleDateString('en-CA', {timeZone:TZ}); }
+let toastT;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3200);
+}
+async function getJSON(url, opts, ms){
+  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), ms || 15000);
+  try{
+    const r = await fetch(url, Object.assign({signal:ctrl.signal}, opts || {}));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+/* ===================== מפה ===================== */
+const map = L.map('map', {zoomControl:false, attributionControl:true}).setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lon], 13);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom:19, attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+map.attributionControl.setPrefix(false);
+const layer = L.layerGroup().addTo(map);
+let meMarker = null, circle = null;
+const markers = {};
+
+map.on('dragstart', () => { S.userMoved = true; });
+map.on('moveend', () => {
+  if (!S.userMoved || !S.center || S.view !== 'near') return;
+  const c = map.getCenter();
+  const d = dist(S.center, {lat:c.lat, lon:c.lng});
+  $('#btnHere').hidden = d < Math.max(300, S.radius * 0.35);
+});
+
+function pinIcon(cat, sel){
+  return L.divIcon({
+    className:'pin' + (sel ? ' sel' : ''),
+    html:`<span style="--c:${CAT[cat].color}">${I[cat]}</span>`,
+    iconSize:[30,30], iconAnchor:[15,15], popupAnchor:[0,-14]
+  });
+}
+
+/* ===================== סיווג מקומות ===================== */
+const FOOD_TYPES = {restaurant:'מסעדה', cafe:'בית קפה', fast_food:'מזון מהיר', ice_cream:'גלידה'};
+const CUISINE = {pizza:'פיצה', burger:'המבורגר', sushi:'סושי', falafel:'פלאפל', shawarma:'שווארמה', kebab:'שיפודים',
+  coffee_shop:'קפה', italian:'איטלקי', asian:'אסייתי', chinese:'סיני', japanese:'יפני', ice_cream:'גלידה',
+  sandwich:'כריכים', bakery:'מאפה', middle_eastern:'מזרחי', steak_house:'בשרים', grill:'גריל', dairy:'חלבי',
+  israeli:'ישראלי', hummus:'חומוס', fish:'דגים', vegan:'טבעוני', vegetarian:'צמחוני', breakfast:'ארוחות בוקר'};
+const NUSACH = {sephardi:'ספרדי', sephardic:'ספרדי', ashkenazi:'אשכנזי', ashkenazic:'אשכנזי', hasidic:'חסידי',
+  chabad:'חב״ד', yemenite:'תימני', orthodox:'אורתודוקסי', reform:'רפורמי', conservative:'מסורתי-קונסרבטיבי', edot_hamizrach:'עדות המזרח'};
+const ATTR_TYPES = {museum:'מוזיאון', viewpoint:'תצפית', attraction:'אטרקציה', zoo:'גן חיות', theme_park:'פארק שעשועים',
+  gallery:'גלריה', aquarium:'אקווריום', archaeological_site:'אתר ארכיאולוגי', castle:'מבצר', ruins:'שרידים עתיקים',
+  monument:'אנדרטה', nature_reserve:'שמורת טבע', water_park:'פארק מים', national_park:'גן לאומי'};
+
+function classify(t){
+  if (t.amenity === 'place_of_worship' && t.religion === 'jewish') return 'shul';
+  if (t.route === 'hiking' || t.route === 'foot') return 'hike';
+  if (FOOD_TYPES[t.amenity]) return 'food';
+  if (t.tourism || t.historic || t.leisure || t.boundary === 'national_park') return 'attr';
+  return null;
+}
+const KOSHER_RE = /כשר|כשרות|מהדרין|בד["״]ץ|kosher|glatt/i;
+function isKosher(t, name){
+  return t['diet:kosher'] === 'yes' || t['diet:kosher'] === 'only' || KOSHER_RE.test(name + ' ' + (t.description || ''));
+}
+const KEEP = ['phone','contact:phone','website','contact:website','opening_hours','addr:street','addr:housenumber','addr:city',
+  'denomination','diet:kosher','cuisine','amenity','tourism','historic','leisure','boundary','distance','network','description','fee','route'];
+function toItem(el){
+  const t = el.tags || {};
+  const lat = el.lat != null ? el.lat : (el.center && el.center.lat);
+  const lon = el.lon != null ? el.lon : (el.center && el.center.lon);
+  if (lat == null) return null;
+  const cat = classify(t); if (!cat) return null;
+  let name = t['name:he'] || t.name || t['name:en'] || '';
+  if (!name){ if (cat === 'shul') name = 'בית כנסת'; else return null; }
+  const tags = {}; KEEP.forEach(k => { if (t[k]) tags[k] = t[k]; });
+  return {id: el.type[0] + el.id, osm: el.type + '/' + el.id, cat, name, lat, lon, tags, kosher: cat === 'food' && isKosher(t, name)};
+}
+function typeLabel(it){
+  const t = it.tags;
+  if (it.cat === 'food'){
+    const c = (t.cuisine || '').split(';').map(x => CUISINE[x.trim()]).filter(Boolean)[0];
+    return [FOOD_TYPES[t.amenity] || 'מסעדה', c].filter(Boolean).join(', ');
+  }
+  if (it.cat === 'shul'){
+    const n = NUSACH[(t.denomination || '').toLowerCase()];
+    return n ? 'נוסח ' + n : 'בית כנסת';
+  }
+  if (it.cat === 'hike'){
+    let s = 'מסלול טיול';
+    const km = parseFloat(t.distance);
+    if (!isNaN(km)) s += ', ' + km + ' ק״מ';
+    return s;
+  }
+  return ATTR_TYPES[t.tourism] || ATTR_TYPES[t.historic] || ATTR_TYPES[t.leisure] || ATTR_TYPES[t.boundary] || 'אטרקציה';
+}
+const DAYS = {Su:'א׳', Mo:'ב׳', Tu:'ג׳', We:'ד׳', Th:'ה׳', Fr:'ו׳', Sa:'ש׳', PH:'חג'};
+function hoursHe(h){
+  if (h === '24/7') return 'פתוח 24 שעות';
+  return h.replace(/\b(Su|Mo|Tu|We|Th|Fr|Sa|PH)\b/g, m => DAYS[m]).replace(/\boff\b/g, 'סגור').replace(/;\s*/g, ' | ');
+}
+
+/* ===================== חיפוש מקומות ===================== */
+function buildQuery(lat, lon, r){
+  const a = `(around:${r},${lat},${lon})`;
+  return `[out:json][timeout:25];(
+nwr["amenity"~"^(restaurant|cafe|fast_food|ice_cream)$"]${a};
+nwr["amenity"="place_of_worship"]["religion"="jewish"]${a};
+nwr["tourism"~"^(attraction|museum|viewpoint|theme_park|zoo|gallery|aquarium)$"]["name"]${a};
+nwr["historic"~"^(archaeological_site|castle|ruins|monument)$"]["name"]${a};
+nwr["leisure"~"^(nature_reserve|water_park)$"]["name"]${a};
+nwr["boundary"="national_park"]["name"]${a};
+relation["route"~"^(hiking|foot)$"]["name"]${a};
+);out center tags 800;`;
+}
+async function overpass(q){
+  const eps = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+  let err;
+  for (const ep of eps){
+    try{
+      return await getJSON(ep, {method:'POST', body:'data=' + encodeURIComponent(q),
+        headers:{'Content-Type':'application/x-www-form-urlencoded'}}, 30000);
+    }catch(e){ err = e; }
+  }
+  throw err;
+}
+let reqId = 0;
+async function loadPlaces(){
+  const my = ++reqId, c = S.center;
+  S.loading = true; S.fromCache = false; render();
+  try{
+    const data = await overpass(buildQuery(c.lat, c.lon, S.radius));
+    if (my !== reqId) return;
+    const seen = new Set();
+    S.items = (data.elements || []).map(toItem).filter(it => it && !seen.has(it.id) && seen.add(it.id));
+    save('last', {center:c, radius:S.radius, items:S.items, at:Date.now()});
+  }catch(e){
+    if (my !== reqId) return;
+    const last = load('last', null);
+    if (last && last.items){
+      S.items = last.items; S.fromCache = true;
+      toast('אין חיבור לשרת המפות. מוצג החיפוש האחרון.');
+    } else {
+      S.items = [];
+      toast('לא הצלחתי לטעון מקומות. בדוק את החיבור ונסה שוב.');
+    }
+  }
+  S.loading = false; render(true);
+}
+
+/* ===================== מיקום ===================== */
+function locate(){
+  if (!navigator.geolocation){ toast('הטלפון לא תומך באיתור מיקום. אפשר לחפש עיר.'); openSearch(); return; }
+  $('#placeLabel').textContent = 'מאתר מיקום…';
+  navigator.geolocation.getCurrentPosition(
+    p => setCenter(p.coords.latitude, p.coords.longitude, null, true),
+    e => {
+      if (e.code === 1) toast('אין הרשאת מיקום. אפשר לחפש עיר, או לאשר מיקום בהגדרות הדפדפן.');
+      else toast('לא הצלחתי למצוא את המיקום. אפשר לחפש עיר.');
+      if (!S.center) setCenter(DEFAULT_CENTER.lat, DEFAULT_CENTER.lon, DEFAULT_CENTER.label, false);
+      openSearch();
+    },
+    {enableHighAccuracy:true, timeout:12000, maximumAge:60000}
+  );
+}
+function setCenter(lat, lon, label, isMe){
+  S.center = {lat, lon, label, isMe};
+  S.userMoved = false; S.sel = null; $('#btnHere').hidden = true;
+  if (S.view === 'favs') setView('near');
+  if (meMarker) meMarker.remove();
+  meMarker = isMe
+    ? L.marker([lat, lon], {icon:L.divIcon({className:'me', html:'<span></span>', iconSize:[18,18], iconAnchor:[9,9]}), zIndexOffset:1000, interactive:false}).addTo(map)
+    : null;
+  drawCircle();
+  $('#placeLabel').textContent = label || (isMe ? 'המיקום שלך' : 'האזור שבמפה');
+  if (!label) reverseName(lat, lon, isMe);
+  save('center', {lat, lon, label: label || null});
+  loadZmanim(lat, lon);
+  loadPlaces();
+}
+function drawCircle(){
+  if (circle) circle.remove();
+  circle = L.circle([S.center.lat, S.center.lon], {radius:S.radius, color:'#1557E0', weight:1.5, fillColor:'#1557E0', fillOpacity:.06, interactive:false}).addTo(map);
+  map.fitBounds(circle.getBounds(), {padding:[8,8]});
+}
+async function reverseName(lat, lon, isMe){
+  try{
+    const r = await getJSON(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=14&accept-language=he`);
+    const a = r.address || {};
+    const city = a.city || a.town || a.village || a.suburb || a.municipality;
+    if (city && S.center && S.center.lat === lat){
+      S.center.label = (isMe ? 'לידך: ' : '') + city;
+      $('#placeLabel').textContent = S.center.label;
+    }
+  }catch(e){}
+}
+
+/* ===================== זמני היום ===================== */
+const ZMANIM = [
+  ['alotHaShachar','עלות השחר'], ['sunrise','הנץ'], ['sofZmanShma','סוף זמן ק״ש'], ['sofZmanTfilla','סוף זמן תפילה'],
+  ['chatzot','חצות'], ['minchaGedola','מנחה גדולה'], ['plagHaMincha','פלג המנחה'], ['sunset','שקיעה'], ['tzeit7083deg','צאת הכוכבים']
+];
+let zItems = [];
+function zSkeleton(){ $('#zlist').innerHTML = '<div class="z skel"></div>'.repeat(5); }
+async function loadZmanim(lat, lon){
+  zSkeleton();
+  const d = todayISO(), [gy, gm, gd] = d.split('-');
+  const la = lat.toFixed(4), lo = lon.toFixed(4);
+  const [z, sh, hc] = await Promise.all([
+    getJSON(`https://www.hebcal.com/zmanim?cfg=json&latitude=${la}&longitude=${lo}&tzid=${TZ}&date=${d}`).catch(() => null),
+    getJSON(`https://www.hebcal.com/shabbat?cfg=json&latitude=${la}&longitude=${lo}&tzid=${TZ}&M=on&lg=he`).catch(() => null),
+    getJSON(`https://www.hebcal.com/converter?cfg=json&gy=${gy}&gm=${+gm}&gd=${+gd}&g2h=1`).catch(() => null)
+  ]);
+  zItems = [];
+  if (z && z.times) ZMANIM.forEach(([k, l]) => { if (z.times[k]) zItems.push({l, t:z.times[k]}); });
+  let parasha = '';
+  if (sh && sh.items){
+    sh.items.forEach(it => {
+      const day = new Date(it.date).toLocaleDateString('he-IL', {weekday:'long', timeZone:TZ});
+      if (it.category === 'candles') zItems.push({l:'כניסת שבת, ' + day, t:it.date, shabbat:true});
+      if (it.category === 'havdalah') zItems.push({l:'צאת שבת, ' + day, t:it.date, shabbat:true});
+      if (it.category === 'parashat') parasha = it.hebrew || it.title;
+    });
+  }
+  const hd = [];
+  if (hc && hc.hebrew) hd.push(hc.hebrew);
+  if (parasha) hd.push(parasha);
+  $('#hdate').textContent = hd.join('   ');
+  if (!zItems.length){ $('#zlist').innerHTML = '<div class="z"><span>זמני היום לא זמינים כרגע</span></div>'; return; }
+  save('zmanim', {zItems, hd, day:d});
+  drawZmanim(true);
+}
+function drawZmanim(scroll){
+  const now = Date.now(); let nextDone = false;
+  $('#zlist').innerHTML = zItems.map(z => {
+    const t = new Date(z.t).getTime();
+    let cls = '';
+    if (!z.shabbat){
+      if (t < now) cls = 'past';
+      else if (!nextDone){ cls = 'next'; nextDone = true; }
+    }
+    return `<div class="z ${cls}"><b>${fmtTime(z.t)}</b><span>${esc(z.l)}</span></div>`;
+  }).join('');
+  if (scroll){
+    const n = $('#zlist .next');
+    if (n) n.scrollIntoView({block:'nearest', inline:'center'});
+  }
+}
+setInterval(() => { if (zItems.length) drawZmanim(false); }, 60000);
+
+/* ===================== תצוגה ===================== */
+function buildChips(){
+  $('#cats').innerHTML = CATS.map(c =>
+    `<button class="chip" data-cat="${c.id}" style="--c:${c.color}" aria-pressed="${S.cat === c.id}">${I[c.id]}${c.name}<span class="n" data-n="${c.id}"></span></button>`
+  ).join('');
+  $('#radius').innerHTML = RADII.map(r => `<button data-r="${r}" aria-pressed="${S.radius === r}">${fmtRadius(r)}</button>`).join('');
+  $('#btnKosher').innerHTML = I.check + 'כשר בלבד';
+}
+function currentItems(){
+  const base = S.view === 'favs' ? Object.values(favs) : S.items;
+  const c = S.center || DEFAULT_CENTER;
+  return base.map(it => Object.assign({}, it, {d: dist(c, it)}));
+}
+function filtered(all){
+  return all.filter(it =>
+    (S.cat === 'all' || it.cat === S.cat) &&
+    (!S.kosher || it.cat !== 'food' || it.kosher)
+  ).sort((a, b) => a.d - b.d);
+}
+function render(fit){
+  // מספרים על הכפתורים
+  const all = currentItems();
+  const pool = all.filter(it => !S.kosher || it.cat !== 'food' || it.kosher);
+  CATS.forEach(c => {
+    const n = c.id === 'all' ? pool.length : pool.filter(i => i.cat === c.id).length;
+    const el = document.querySelector(`[data-n="${c.id}"]`);
+    if (el) el.textContent = S.loading ? '' : n;
+  });
+  $('#btnKosher').hidden = !(S.cat === 'all' || S.cat === 'food');
+
+  if (S.loading){
+    $('#status').textContent = 'מחפש מקומות בטווח ' + fmtRadius(S.radius) + '…';
+    $('#notes').innerHTML = '';
+    $('#list').innerHTML = '<div class="skel-row"><i style="width:42px;height:42px"></i><div style="flex:1"><i style="width:60%;height:16px"></i><i style="width:40%;height:12px;margin-top:8px"></i></div></div>'.repeat(4);
+    layer.clearLayers();
+    return;
+  }
+  const list = filtered(all);
+  const shown = list.slice(0, 150);
+
+  // שורת מצב
+  if (S.view === 'favs') $('#status').textContent = list.length ? `המועדפים שלך (${list.length})` : '';
+  else $('#status').textContent = list.length
+    ? `${list.length} מקומות בטווח ${fmtRadius(S.radius)}` + (list.length > 150 ? ', מוצגים 150 הקרובים' : '')
+    : '';
+
+  // הערות
+  let notes = '';
+  if (S.fromCache && S.view === 'near') notes += '<div class="note info">אין חיבור לשרת המפות, מוצג החיפוש האחרון שנשמר בטלפון.</div>';
+  if (shown.some(i => i.cat === 'food')) notes += '<div class="note">סימון &quot;כשר&quot; מבוסס על שם העסק והמידע במפה. יש לוודא תעודת כשרות במקום.</div>';
+  $('#notes').innerHTML = notes;
+
+  // רשימה
+  if (!shown.length){
+    if (S.view === 'favs'){
+      $('#list').innerHTML = `<div class="empty"><strong>אין עדיין מועדפים</strong>לוחצים על הלב ליד מקום כדי לשמור אותו כאן.</div>`;
+    } else {
+      const bigger = RADII.find(r => r > S.radius);
+      $('#list').innerHTML = `<div class="empty"><strong>לא נמצאו מקומות בטווח ${fmtRadius(S.radius)}</strong>${S.kosher ? 'אפשר לכבות את הסינון &quot;כשר בלבד&quot; או להגדיל את הטווח.' : 'אפשר להגדיל את הטווח או לבחור קטגוריה אחרת.'}${bigger ? `<br><button class="btn" data-grow="${bigger}">הגדל ל-${fmtRadius(bigger)}</button>` : ''}</div>`;
+    }
+  } else {
+    $('#list').innerHTML = shown.map(rowHTML).join('');
+  }
+
+  // סמנים
+  layer.clearLayers();
+  for (const k in markers) delete markers[k];
+  shown.forEach(it => {
+    const m = L.marker([it.lat, it.lon], {icon:pinIcon(it.cat, it.id === S.sel)});
+    m.on('click', () => select(it.id, 'map'));
+    m.bindPopup(`<b>${esc(it.name)}</b><br>${esc(typeLabel(it))}, ${fmtDist(it.d)}`, {closeButton:false});
+    m.addTo(layer); markers[it.id] = m;
+  });
+  if (fit && S.view === 'favs' && shown.length){
+    map.fitBounds(L.latLngBounds(shown.map(i => [i.lat, i.lon])), {padding:[30,30], maxZoom:16});
+  }
+}
+function rowHTML(it){
+  const t = it.tags, c = CAT[it.cat].color;
+  const phone = (t.phone || t['contact:phone'] || '').split(';')[0].trim();
+  let web = (t.website || t['contact:website'] || '').split(';')[0].trim();
+  if (web && !/^https?:\/\//i.test(web)) web = 'https://' + web;
+  const addr = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ') + (t['addr:city'] ? ', ' + t['addr:city'] : '');
+  const walkMin = Math.round(it.d / 80);
+  const walk = it.d < 2500 ? `<span>${walkMin < 1 ? 'פחות מדקה' : walkMin + ' דק׳'} הליכה</span>` : '';
+  const extra = [];
+  if (addr.trim()) extra.push(esc(addr));
+  if (t.opening_hours) extra.push('<span dir="auto">' + esc(hoursHe(t.opening_hours)) + '</span>');
+  const gm = `https://www.google.com/maps/dir/?api=1&destination=${it.lat},${it.lon}${it.d < 1500 ? '&travelmode=walking' : ''}`;
+  const waze = `https://waze.com/ul?ll=${it.lat},${it.lon}&navigate=yes`;
+  const isFav = !!favs[it.id];
+  return `<article class="row${it.id === S.sel ? ' sel' : ''}" id="r-${it.id}" data-id="${it.id}">
+  <div class="badge" style="--c:${c}">${I[it.cat]}</div>
+  <div class="body">
+    <h3>${esc(it.name)}</h3>
+    <p class="meta"><span class="d">${fmtDist(it.d)}</span>${walk}<span>${esc(typeLabel(it))}</span></p>
+    ${extra.length ? `<p class="extra">${extra.join('<br>')}</p>` : ''}
+    ${it.kosher ? '<span class="tag">מסומן ככשר</span>' : ''}
+    <div class="actions">
+      <a class="act go" href="${waze}" target="_blank" rel="noopener">${I.nav}סע</a>
+      <a class="act" href="${gm}" target="_blank" rel="noopener" aria-label="גוגל מפות">${I.map}</a>
+      ${phone ? `<a class="act" href="tel:${esc(phone.replace(/[^\d+]/g, ''))}" aria-label="חיוג">${I.phone}</a>` : ''}
+      ${web ? `<a class="act" href="${esc(web)}" target="_blank" rel="noopener" aria-label="אתר">${I.web}</a>` : ''}
+      ${it.cat === 'hike' ? `<a class="act" href="https://www.openstreetmap.org/${esc(it.osm)}" target="_blank" rel="noopener">מפת המסלול</a>` : ''}
+      <button class="act fav" data-fav="${it.id}" aria-pressed="${isFav}" aria-label="${isFav ? 'הסר ממועדפים' : 'שמור במועדפים'}">${I.heart}</button>
+    </div>
+  </div>
+</article>`;
+}
+function select(id, from){
+  const prev = S.sel; S.sel = id;
+  [prev, id].forEach(k => {
+    if (!k) return;
+    const r = document.getElementById('r-' + k);
+    if (r) r.classList.toggle('sel', k === id);
+    const m = markers[k];
+    if (m){
+      const it = (S.view === 'favs' ? favs[k] : S.items.find(x => x.id === k)) || favs[k];
+      if (it) m.setIcon(pinIcon(it.cat, k === id));
+    }
+  });
+  const m = markers[id];
+  if (from === 'map'){
+    const r = document.getElementById('r-' + id);
+    if (r) r.scrollIntoView({behavior:'smooth', block:'start'});
+  } else if (m){
+    map.flyTo(m.getLatLng(), Math.max(map.getZoom(), 16), {duration:.6});
+    m.openPopup();
+    $('.mapwrap').scrollIntoView({behavior:'smooth', block:'center'});
+  }
+}
+function toggleFav(id){
+  if (favs[id]){ delete favs[id]; toast('הוסר מהמועדפים'); }
+  else {
+    const it = S.items.find(x => x.id === id);
+    if (!it) return;
+    const {d, ...clean} = it;
+    favs[id] = clean; toast('נשמר במועדפים');
+  }
+  save('favs', favs);
+  if (S.view === 'favs') render();
+  else {
+    const b = document.querySelector(`[data-fav="${id}"]`);
+    if (b){ b.setAttribute('aria-pressed', !!favs[id]); b.setAttribute('aria-label', favs[id] ? 'הסר ממועדפים' : 'שמור במועדפים'); }
+  }
+}
+function setView(v){
+  S.view = v; S.sel = null;
+  $('#btnFavs').setAttribute('aria-pressed', v === 'favs');
+  $('#btnHere').hidden = true;
+  if (circle) circle.setStyle({opacity: v === 'favs' ? 0 : 1, fillOpacity: v === 'favs' ? 0 : .06});
+  $('.tools').style.display = v === 'favs' ? 'none' : '';
+}
+
+/* ===================== חיפוש עיר ===================== */
+function openSearch(){
+  $('#search').hidden = false;
+  $('#sres').innerHTML = `<button class="res mine" id="useMe">${I.locate}השתמש במיקום שלי</button><div class="shint">אפשר לכתוב עיר, שכונה או מקום מוכר.</div>`;
+  $('#q').value = '';
+  setTimeout(() => $('#q').focus(), 50);
+}
+function closeSearch(){ $('#search').hidden = true; }
+let qT, qId = 0;
+function onQuery(){
+  clearTimeout(qT);
+  const q = $('#q').value.trim();
+  if (q.length < 2) return;
+  qT = setTimeout(async () => {
+    const my = ++qId;
+    $('#sres').innerHTML = '<div class="shint">מחפש…</div>';
+    try{
+      const r = await getJSON(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&countrycodes=il&accept-language=he&limit=7`);
+      if (my !== qId) return;
+      $('#sres').innerHTML = r.length
+        ? r.map(x => `<button class="res" data-lat="${x.lat}" data-lon="${x.lon}" data-name="${esc(x.name || x.display_name.split(',')[0])}"><b>${esc(x.name || x.display_name.split(',')[0])}</b><span>${esc(x.display_name)}</span></button>`).join('')
+        : '<div class="shint">לא נמצא מקום בשם הזה. נסה לכתוב אחרת.</div>';
+    }catch(e){
+      if (my === qId) $('#sres').innerHTML = '<div class="shint">החיפוש לא זמין כרגע. בדוק את החיבור.</div>';
+    }
+  }, 450);
+}
+
+/* ===================== ערכת צבעים ===================== */
+function applyTheme(){
+  const t = load('theme', 'auto');
+  if (t === 'auto') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = t;
+}
+function cycleTheme(){
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const cur = load('theme', 'auto');
+  const isDark = cur === 'dark' || (cur === 'auto' && dark);
+  save('theme', isDark ? 'light' : 'dark');
+  applyTheme();
+  toast(isDark ? 'מצב בהיר' : 'מצב כהה');
+}
+
+/* ===================== חיבור כפתורים ===================== */
+function wire(){
+  $('#btnSearch').innerHTML = I.search;
+  $('#btnFavs').innerHTML = I.heart;
+  $('#btnTheme').innerHTML = I.theme;
+  $('#btnLocate').innerHTML = I.locate;
+  $('#closeSearch').innerHTML = I.close;
+
+  $('#cats').addEventListener('click', e => {
+    const b = e.target.closest('[data-cat]'); if (!b) return;
+    S.cat = b.dataset.cat; S.sel = null;
+    document.querySelectorAll('#cats .chip').forEach(x => x.setAttribute('aria-pressed', x === b));
+    b.scrollIntoView({block:'nearest', inline:'center', behavior:'smooth'});
+    render();
+  });
+  $('#radius').addEventListener('click', e => {
+    const b = e.target.closest('[data-r]'); if (!b || !S.center) return;
+    S.radius = +b.dataset.r; save('radius', S.radius);
+    document.querySelectorAll('#radius button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    drawCircle(); loadPlaces();
+  });
+  $('#btnKosher').addEventListener('click', () => {
+    S.kosher = !S.kosher; $('#btnKosher').setAttribute('aria-pressed', S.kosher); render();
+  });
+  $('#list').addEventListener('click', e => {
+    const f = e.target.closest('[data-fav]'); if (f){ toggleFav(f.dataset.fav); return; }
+    const g = e.target.closest('[data-grow]');
+    if (g){ const r = document.querySelector(`#radius [data-r="${g.dataset.grow}"]`); if (r) r.click(); return; }
+    if (e.target.closest('a,button')) return;
+    const row = e.target.closest('.row'); if (row) select(row.dataset.id, 'list');
+  });
+  $('#btnHere').addEventListener('click', () => {
+    const c = map.getCenter(); setCenter(c.lat, c.lng, null, false);
+  });
+  $('#btnLocate').addEventListener('click', locate);
+  $('#btnSearch').addEventListener('click', openSearch);
+  $('#closeSearch').addEventListener('click', closeSearch);
+  $('#btnFavs').addEventListener('click', () => {
+    setView(S.view === 'favs' ? 'near' : 'favs');
+    if (S.view === 'near' && circle) map.fitBounds(circle.getBounds(), {padding:[8,8]});
+    render(true);
+  });
+  $('#btnTheme').addEventListener('click', cycleTheme);
+  $('#q').addEventListener('input', onQuery);
+  $('#sres').addEventListener('click', e => {
+    if (e.target.closest('#useMe')){ closeSearch(); locate(); return; }
+    const b = e.target.closest('.res[data-lat]'); if (!b) return;
+    closeSearch(); setCenter(+b.dataset.lat, +b.dataset.lon, b.dataset.name, false);
+  });
+  $('#introGo').addEventListener('click', () => { save('seen', 1); $('#intro').hidden = true; locate(); });
+  $('#introSearch').addEventListener('click', () => {
+    save('seen', 1); $('#intro').hidden = true;
+    setCenter(DEFAULT_CENTER.lat, DEFAULT_CENTER.lon, DEFAULT_CENTER.label, false);
+    openSearch();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#search').hidden) closeSearch(); });
+}
+
+/* ===================== הפעלה ===================== */
+applyTheme();
+buildChips();
+wire();
+zSkeleton();
+if (load('seen', 0)) locate();
+else $('#intro').hidden = false;
+
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
